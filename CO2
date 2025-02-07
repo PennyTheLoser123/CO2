@@ -1,0 +1,53 @@
+#include <SoftwareSerial.h>
+
+// Define pins for SoftwareSerial
+#define RX_PIN 10
+#define TX_PIN 11
+
+// Create a SoftwareSerial object
+SoftwareSerial BTSerial(RX_PIN, TX_PIN);
+
+#define anInput     A0   // analog feed from MQ135
+#define co2Zero     55   // calibrated CO2 0 level
+
+void setup() 
+{
+  pinMode(anInput, INPUT);      // MQ135 analog feed set for input
+  Serial.begin(9600);          // Serial communication for debugging
+
+  BTSerial.begin(9600);        // **Initialize SoftwareSerial for Bluetooth HC05/06**
+}
+  
+void loop() 
+{
+  int co2now[10];              // int array for co2 readings
+  int co2raw = 0;              // int for raw value of co2
+  int co2ppm = 0;              // int for calculated ppm
+  int zzz = 0;                 // int for averaging
+
+  for (int x = 0; x < 10; x++) // sample co2 10x over 2 seconds
+  {                   
+    co2now[x] = analogRead(A0);
+    delay(200);
+  }
+
+  for (int x = 0; x < 10; x++) // add samples together
+  {                     
+    zzz = zzz + co2now[x];  
+  }
+  
+  co2raw = zzz / 10;                            // divide samples by 10
+  co2ppm = co2raw - co2Zero;                   // get calculated ppm
+
+  Serial.print("Conc. of CO2=");
+  Serial.print(co2ppm);                        // prints the value read
+  Serial.println(" PPM");
+
+  // **Send CO2 concentration via Bluetooth**
+  BTSerial.print("Conc. of CO2=");             // **Send CO2 concentration label via Bluetooth**
+  BTSerial.print(co2ppm);                      // **Send CO2 concentration value via Bluetooth**
+  BTSerial.println(" PPM");                    // **Send units via Bluetooth**
+
+  delay(1000);             
+
+}
