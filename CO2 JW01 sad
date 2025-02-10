@@ -1,0 +1,62 @@
+#include <SoftwareSerial.h>
+
+// 定義接收和傳送腳位
+#define RX_PIN 2  // Arduino 接收 JW01 的 TX
+#define TX_PIN 3  // Arduino 傳送 JW01 的 RX
+
+// 初始化 SoftwareSerial 對象
+SoftwareSerial co2Serial(RX_PIN, TX_PIN); // RX, TX
+
+void setup() {
+  Serial.begin(9600);        // 初始化與電腦的串口通信，波特率為9600
+  co2Serial.begin(9600);     // 初始化與 JW01 傳感器的串口通信，波特率為9600
+  Serial.println("JW01 CO2 Sensor Initialization...");
+  delay(2000); // 延遲 2 秒，確保傳感器已啟動
+}
+
+void loop() {
+  // 檢查是否有至少 6 個字節可讀取
+  if (co2Serial.available() >= 6) {
+    byte data[6];
+    // 讀取 6 個字節
+    for (int i = 0; i < 6; i++) {
+      data[i] = co2Serial.read();
+    }
+
+    // 打印原始數據
+    Serial.print("Raw Data: ");
+    for (int i = 0; i < 6; i++) {
+      if (data[i] < 16) Serial.print("0"); // 補零
+      Serial.print(data[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
+
+    // 驗證模塊地址
+    if (data[0] != 0x2C) {
+      Serial.println("Invalid module address.");
+      return;
+    }
+
+    // 計算校驗和
+    byte checksum = 0;
+    for (int i = 0; i < 5; i++) {
+      checksum += data[i];
+    }
+    checksum = checksum % 256;
+
+    // 驗證校驗和
+    if (checksum != data[5]) {
+      Serial.println("Checksum mismatch.");
+      return;
+    }
+
+    // 解析 CO2 濃度
+    int co2 = data[1] * 256 + data[2];
+    Serial.print("CO2 Concentration: ");
+    Serial.print(co2);
+    Serial.println(" ppm");
+  }
+
+  delay(2000); // 每2秒讀取一次
+}
