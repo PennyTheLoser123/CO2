@@ -1,0 +1,67 @@
+#include <SoftwareSerial.h>
+
+// Define RX and TX pins for the CO2 sensor and Bluetooth module
+#define RX_PIN 2  // Arduino RX from JW01 TX (also used for Bluetooth)
+#define TX_PIN 3  // Arduino TX to JW01 RX (also used for Bluetooth)
+
+// Initialize SoftwareSerial object for CO2 sensor and Bluetooth module
+SoftwareSerial co2Serial(RX_PIN, TX_PIN); // For CO2 sensor and Bluetooth module
+
+void setup() {
+  Serial.begin(9600);       // Initialize serial communication with the computer at 9600 baud
+  co2Serial.begin(9600);    // Initialize serial communication with the JW01 sensor and Bluetooth at 9600 baud
+  Serial.println("JW01 CO2 Sensor Initialization...");
+  delay(2000); // Delay 2 seconds to ensure the sensor is ready
+}
+
+void loop() {
+  // Check if there are at least 6 bytes available to read from the CO2 sensor
+  if (co2Serial.available() >= 6) {
+    byte data[6];
+    // Read 6 bytes from the CO2 sensor
+    for (int i = 0; i < 6; i++) {
+      data[i] = co2Serial.read();
+    }
+
+    // Print raw data to the Serial Monitor
+    Serial.print("Raw Data: ");
+    for (int i = 0; i < 6; i++) {
+      if (data[i] < 16) Serial.print("0"); // Add leading zero
+      Serial.print(data[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
+
+    // Validate module address
+    if (data[0] != 0x2C) {
+      Serial.println("Invalid module address.");
+      return;
+    }
+
+    // Calculate checksum
+    byte checksum = 0;
+    for (int i = 0; i < 5; i++) {
+      checksum += data[i];
+    }
+    checksum = checksum % 256;
+
+    // Validate checksum
+    if (checksum != data[5]) {
+      Serial.println("Checksum mismatch.");
+      return;
+    }
+
+    // Parse CO2 concentration
+    int co2 = data[1] * 256 + data[2];
+    Serial.print("CO2 Concentration: ");
+    Serial.print(co2);
+    Serial.println(" ppm");
+
+    // Send CO2 concentration to Bluetooth
+    co2Serial.print("CO2 Concentration: ");
+    co2Serial.print(co2);
+    co2Serial.println(" ppm");
+  }
+
+  delay(2000); // Read every 2 seconds
+}
